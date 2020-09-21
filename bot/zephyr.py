@@ -66,17 +66,15 @@ def source_zephyr_env(zephyr_wd):
     cmd = ['source', './zephyr-env.sh', '&&', 'env']
     cmd = subprocess.list2cmdline(cmd)
 
-    p = subprocess.Popen(cmd, cwd=zephyr_wd, shell=True,
-                         stdout=subprocess.PIPE, executable='/bin/bash')
+    p = subprocess.check_output(cmd, cwd=zephyr_wd, shell=True, executable='/bin/bash')
 
-    lines = p.stdout.readlines()
+    lines = p.decode().splitlines()
     # XXX: Doesn't parse functions for now
     filtered_lines = [x for x in lines if (not x.startswith(('BASH_FUNC',
                                                          ' ', '}')))]
-    pairs = [l.decode('UTF-8').rstrip().split('=', 1) for l in filtered_lines]
+    pairs = [l.rstrip().split('=', 1) for l in filtered_lines]
     valid_pairs = list(filter(_validate_pair, pairs))
     env = dict(valid_pairs)
-    p.communicate()
 
     return env
 
