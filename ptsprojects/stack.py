@@ -219,6 +219,8 @@ class Gap:
             return False
 
     def iut_addr_get_str(self):
+        while not self.iut_bd_addr.data["address"]:
+            continue
         addr = self.iut_bd_addr.data["address"].decode("utf-8")
         if addr:
             return addr
