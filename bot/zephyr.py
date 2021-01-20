@@ -24,6 +24,7 @@ import time
 import datetime
 import collections
 import serial
+from pathlib import Path
 
 import autoptsclient_common as autoptsclient
 import ptsprojects.zephyr as autoprojects
@@ -101,7 +102,7 @@ def build_and_flash(zephyr_wd, board, board_id, conf_file=None):
     """Build and flash Zephyr binary
     :param zephyr_wd: Zephyr source path
     :param board: IUT
-    :param board_id: Segger ID
+    :param board_id: Serial number of IUT
     :param conf_file: configuration file to be used
     """
     logging.debug("{}: {} {} {} {}". format(build_and_flash.__name__,
@@ -117,12 +118,14 @@ def build_and_flash(zephyr_wd, board, board_id, conf_file=None):
         cmd_build.extend(('--', '-DCONF_FILE={}'.format(conf_file)))
     check_call(cmd_build, env=env, cwd=tester_dir)
 
-    cmd_flash = ['west', 'flash', '--snr', board_id]
-    check_call(cmd_flash, env=env, cwd=tester_dir)
+    cmd_flash = ['west', 'flash', '--erase']
+    if board_id != '':
+        cmd_flash.extend(('--snr', board_id))
+        check_call(cmd_flash, env=env, cwd=tester_dir)
+        return get_tty_path_by_id(board, board_id)
 
-    check_call(cmd, env=env, cwd=tester_dir)
-    check_call(['west', 'flash', '--skip-rebuild', '--board-dir', tty],
-               env=env, cwd=tester_dir)
+    check_call(cmd_flash, env=env, cwd=tester_dir)
+    return get_tty_path("J-Link")
 
 
 def flush_serial(tty):
@@ -176,6 +179,28 @@ def apply_overlay(zephyr_wd, base_conf, cfg_name, overlay):
                 config.write("{}={}\n".format(k, v))
 
     os.chdir(cwd)
+
+
+def get_tty_path_by_id(board, board_id):
+    """Returns by-id symlink of the target device (eg. /dev/serial/by-id/..)
+    :param board: IUT
+    :param board_id: Serial number of IUT
+    :return: tty path if device found, otherwise None
+    """
+    defined_index_for_device = {
+        "nrf52dk_nrf52832": '00',
+        "nrf52833dk_nrf52833": '00',
+        "nrf52840dk_nrf52840": '00',
+        'nrf52833dk_nrf52820': '02',
+        "nrf5340dk_nrf5340_cpuapp": '04'
+    }
+    index = defined_index_for_device[board]
+
+    dev = next(Path("/dev/serial/by-id").glob(f'*{board_id}*if{index}'), None)
+    if dev is not None:
+        dev = str(dev)
+    logging.debug('get_tty_path %s %s %s', board_id, index, dev)
+    return dev
 
 
 def get_tty_path(name):
@@ -313,7 +338,7 @@ def run_tests(args, iut_config, tty):
         flush_serial(tty)
         time.sleep(10)
 
-        autoprojects.iutctl.init(args["kernel_image"], tty, args["board"])
+        autoprojects.iutctl.init(args["kernel_image"], tty, args["board_id"], args["board"])
 
         # Setup project PIXITS
         autoprojects.dis.set_pixits(ptses[0])
