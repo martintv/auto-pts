@@ -209,14 +209,16 @@ class Board:
 
     arduino_101 = "arduino_101"
     c1000 = "c1000"
-    nrf52 = "nrf52"
-    reel  = "reel_board"
+    nrf52832 = "nrf52dk_nrf52832"
+    nrf52840 = "nrf52840dk_nrf52840"
+    reel = "reel_board"
 
     # for command line options
     names = [
         arduino_101,
         c1000,
-        nrf52,
+        nrf52832,
+        nrf52840,
         reel
     ]
 
@@ -268,7 +270,8 @@ class Board:
         reset_cmd_getters = {
             self.arduino_101: self._get_reset_cmd_arduino_101,
             self.c1000: self._get_reset_cmd_c1000,
-            self.nrf52: self._get_reset_cmd_nrf52,
+            self.nrf52832: self._get_reset_cmd_nrf52,
+            self.nrf52840: self._get_reset_cmd_nrf52,
             self.reel: self._get_reset_cmd_reel
         }
 
