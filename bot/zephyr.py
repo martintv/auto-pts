@@ -97,27 +97,28 @@ def source_zephyr_env(zephyr_wd):
     return env
 
 
-def build_and_flash(zephyr_wd, board, tty, conf_file=None):
+def build_and_flash(zephyr_wd, board, board_id, conf_file=None):
     """Build and flash Zephyr binary
     :param zephyr_wd: Zephyr source path
     :param board: IUT
-    :param tty path
+    :param board_id: Segger ID
     :param conf_file: configuration file to be used
     """
-    logging.debug("{}: {} {} {}". format(build_and_flash.__name__, zephyr_wd,
-                                         board, conf_file))
+    logging.debug("{}: {} {} {} {}". format(build_and_flash.__name__,
+                                            zephyr_wd, board,
+                                            board_id, conf_file))
     tester_dir = os.path.join(zephyr_wd, "tests", "bluetooth", "tester")
 
     # Set Zephyr project env variables
     env = source_zephyr_env(zephyr_wd)
 
-    cmd = ['west',  'build', '-p', 'auto', '-b', board]
-    if conf_file and conf_file != 'default':
-        cmd.extend(('--', '-DCONF_FILE={}'.format(conf_file)))
+    cmd_build = ['west',  'build', '-p', 'auto', '-b', board]
+    if conf_file:
+        cmd_build.extend(('--', '-DCONF_FILE={}'.format(conf_file)))
+    check_call(cmd_build, env=env, cwd=tester_dir)
 
-    if sys.platform == 'win32':
-        cmd = subprocess.list2cmdline(cmd)
-        cmd = ['bash.exe', '-c', '-i', cmd]  # bash.exe == wsl
+    cmd_flash = ['west', 'flash', '--snr', board_id]
+    check_call(cmd_flash, env=env, cwd=tester_dir)
 
     check_call(cmd, env=env, cwd=tester_dir)
     check_call(['west', 'flash', '--skip-rebuild', '--board-dir', tty],
@@ -310,10 +311,10 @@ def run_tests(args, iut_config, tty):
             apply_overlay(args["project_path"], config_default, config,
                           value['overlay'])
 
-        build_and_flash(args["project_path"],
-                        autopts2board[args["board"]],
-                        tty,
-                        config)
+        tty = build_and_flash(args["project_path"],
+                              args["board"],
+                              args["board_id"],
+                              config)
         logging.debug("TTY path: %s" % tty)
 
         flush_serial(tty)
