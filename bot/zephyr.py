@@ -24,6 +24,8 @@ import time
 import datetime
 import collections
 import serial
+from pathlib import Path
+from git import Repo
 
 import autoptsclient_common as autoptsclient
 import ptsprojects.zephyr as autoprojects
@@ -97,31 +99,60 @@ def source_zephyr_env(zephyr_wd):
     return env
 
 
-def build_and_flash(zephyr_wd, board, tty, conf_file=None):
+def build_and_flash(zephyr_wd, board, board_id, conf_def, conf_file=None):
     """Build and flash Zephyr binary
     :param zephyr_wd: Zephyr source path
     :param board: IUT
-    :param tty path
+    :param board_id: Serial number of IUT
+    :param conf_def: default configuration file
     :param conf_file: configuration file to be used
     """
-    logging.debug("{}: {} {} {}". format(build_and_flash.__name__, zephyr_wd,
-                                         board, conf_file))
+    logging.debug("{}: {} {} {} {}". format(build_and_flash.__name__,
+                                            zephyr_wd, board,
+                                            board_id, conf_file))
     tester_dir = os.path.join(zephyr_wd, "tests", "bluetooth", "tester")
 
     # Set Zephyr project env variables
     env = source_zephyr_env(zephyr_wd)
 
-    cmd = ['west',  'build', '-p', 'auto', '-b', board]
-    if conf_file and conf_file != 'default':
-        cmd.extend(('--', '-DCONF_FILE={}'.format(conf_file)))
+    # If nrf53 power-cycled, use the hack to fix hw_flow_control --BEGIN
+    if board == 'nrf5340dk_nrf5340_cpuapp' and conf_file == 'prj.conf':
+        repo = Repo(zephyr_wd)
+        nrf5340_overlay_conf = os.path.join(zephyr_wd, 'tests', 'bluetooth',
+                                            'tester', 'nrf5340dk_nrf5340_cpuapp.overlay')
+        if repo.is_dirty(path=nrf5340_overlay_conf):
+            repo.index.checkout(paths=nrf5340_overlay_conf, force=True)
 
-    if sys.platform == 'win32':
-        cmd = subprocess.list2cmdline(cmd)
-        cmd = ['bash.exe', '-c', '-i', cmd]  # bash.exe == wsl
+        lines = []
+        with open(nrf5340_overlay_conf, 'r') as file:
+            lines = file.readlines()
+            lines = lines[:-2]
+            lines.append('};')
+        with open(nrf5340_overlay_conf, 'w') as file:
+            file.writelines(lines)
 
-    check_call(cmd, env=env, cwd=tester_dir)
-    check_call(['west', 'flash', '--skip-rebuild', '--board-dir', tty],
-               env=env, cwd=tester_dir)
+        cmd_build = ['west', 'build', '-p', 'always', '-b', board]
+        check_call(cmd_build, env=env, cwd=tester_dir)
+        cmd_flash = ['west', 'flash', '--recover', '--erase', '--snr', board_id]
+        check_call(cmd_flash, env=env, cwd=tester_dir)
+
+        repo.index.checkout(paths=nrf5340_overlay_conf, force=True)
+    # --END
+
+    cmd_build = ['west', 'build', '-p', 'always', '-b', board]
+    if conf_file != conf_def:
+        cmd_build.extend(('--', '-DOVERLAY_CONFIG={}'.format(conf_file)))
+
+    check_call(cmd_build, env=env, cwd=tester_dir)
+
+    cmd_flash = ['west', 'flash', '--recover', '--erase']
+    if board_id != '':
+        cmd_flash.extend(('--snr', board_id))
+        check_call(cmd_flash, env=env, cwd=tester_dir)
+        return get_tty_path_by_id(board, board_id)
+
+    check_call(cmd_flash, env=env, cwd=tester_dir)
+    return get_tty_path("J-Link")
 
 
 def flush_serial(tty):
@@ -142,11 +173,10 @@ def flush_serial(tty):
                     'continue;', 'done'])
 
 
-def apply_overlay(zephyr_wd, base_conf, cfg_name, overlay):
+def apply_overlay(zephyr_wd, cfg_name, overlay):
     """Duplicates default_conf configuration file and applies overlay changes
     to it.
     :param zephyr_wd: Zephyr source path
-    :param base_conf: base configuration file
     :param cfg_name: new configuration file name
     :param overlay: defines changes to be applied
     :return: None
@@ -156,32 +186,33 @@ def apply_overlay(zephyr_wd, base_conf, cfg_name, overlay):
 
     os.chdir(tester_app_dir)
 
-    with open(base_conf, 'r') as base:
-        with open(cfg_name, 'w') as config:
-            for line in base.readlines():
-                re_config = re.compile(
-                    r'(?P<config_key>\w+)=(?P<config_value>\w+)*')
-                match = re_config.match(line)
-                if match and match.group('config_key') in overlay:
-                    v = overlay.pop(match.group('config_key'))
-                    config.write(
-                        "{}={}\n".format(
-                            match.group('config_key'), v))
-                else:
-                    config.write(line)
-
-            # apply what's left
-            for k, v in list(overlay.items()):
-                config.write("{}={}\n".format(k, v))
+    with open(cfg_name, 'w') as config:
+        for k, v in list(overlay.items()):
+            config.write("{}={}\n".format(k, v))
 
     os.chdir(cwd)
 
 
-autopts2board = {
-    None: None,
-    'nrf52': 'nrf52840dk_nrf52840',
-    'reel_board' : 'reel_board'
-}
+def get_tty_path_by_id(board, board_id):
+    """Returns by-id symlink of the target device (eg. /dev/serial/by-id/..)
+    :param board: IUT
+    :param board_id: Serial number of IUT
+    :return: tty path if device found, otherwise None
+    """
+    defined_index_for_device = {
+        "nrf52dk_nrf52832": '00',
+        "nrf52833dk_nrf52833": '00',
+        "nrf52840dk_nrf52840": '00',
+        'nrf52833dk_nrf52820': '02',
+        "nrf5340dk_nrf5340_cpuapp": '04'
+    }
+    index = defined_index_for_device[board]
+
+    dev = next(Path("/dev/serial/by-id").glob(f'*{board_id}*if{index}'), None)
+    if dev is not None:
+        dev = str(dev)
+    logging.debug('get_tty_path %s %s %s', board_id, index, dev)
+    return dev
 
 
 def get_tty_path(name):
@@ -307,19 +338,19 @@ def run_tests(args, iut_config, tty):
 
     for config, value in list(iut_config.items()):
         if 'overlay' in value:
-            apply_overlay(args["project_path"], config_default, config,
-                          value['overlay'])
+            apply_overlay(args["project_path"], config, value['overlay'])
 
-        build_and_flash(args["project_path"],
-                        autopts2board[args["board"]],
-                        tty,
-                        config)
+        tty = build_and_flash(args["project_path"],
+                              args["board"],
+                              args["board_id"],
+                              config_default,
+                              config)
         logging.debug("TTY path: %s" % tty)
 
         flush_serial(tty)
         time.sleep(10)
 
-        autoprojects.iutctl.init(args["kernel_image"], tty, args["board"])
+        autoprojects.iutctl.init(args["kernel_image"], tty, args["board_id"], args["board"])
 
         # Setup project PIXITS
         autoprojects.dis.set_pixits(ptses[0])
