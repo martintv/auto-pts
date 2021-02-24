@@ -24,6 +24,7 @@ import time
 import datetime
 import collections
 from pathlib import Path
+from git import Repo
 
 import autoptsclient_common as autoptsclient
 import ptsprojects.zephyr as autoprojects
@@ -103,6 +104,34 @@ def build_and_flash(zephyr_wd, board, board_id, conf_file=None):
 
     # Set Zephyr project env variables
     env = source_zephyr_env(zephyr_wd)
+
+    if board == 'nrf5340dk_nrf5340_cpuapp':
+        repo = Repo(zephyr_wd)
+        nrf5340_overlay_conf = os.path.join(zephyr_wd, 'tests', 'bluetooth',
+                                            'tester', 'nrf5340dk_nrf5340_cpuapp.overlay')
+
+        if repo.is_dirty(path=nrf5340_overlay_conf):
+            repo.index.checkout(paths=nrf5340_overlay_conf, force=True)
+
+        lines = []
+        with open(nrf5340_overlay_conf, 'r') as file:
+            lines = file.readlines()
+            lines = lines[:-2]
+            lines.append('};')
+
+        with open(nrf5340_overlay_conf, 'w') as file:
+            file.writelines(lines)
+
+        cmd_build = ['west', 'build', '-p', 'always', '-b', board]
+        if conf_file:
+            cmd_build.extend(('--', '-DOVERLAY_CONFIG={}'.format(conf_file)))
+        check_call(cmd_build, env=env, cwd=tester_dir)
+        cmd_flash = ['west', 'flash', '--erase']
+        if board_id != '':
+            cmd_flash.extend(('--snr', board_id))
+            check_call(cmd_flash, env=env, cwd=tester_dir)
+
+        repo.index.checkout(paths=nrf5340_overlay_conf, force=True)
 
     cmd_build = ['west', 'build', '-p', 'always', '-b', board]
     if conf_file:
