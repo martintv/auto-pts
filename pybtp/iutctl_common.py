@@ -288,7 +288,7 @@ class RTT2PTY:
         self.log_filename = log_filename
         self.pty_name = self._start_rtt2pty_proc()
 
-        self.serial = serial.Serial(self.pty_name, 115200, timeout=0)
+        self.serial = serial.Serial(self.pty_name, 9600, timeout=0)
         self.stop_thread.clear()
         self.log_file = open(self.log_filename, 'a')
         self.serial_thread = threading.Thread(

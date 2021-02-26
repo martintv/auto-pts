@@ -30,7 +30,7 @@ ZEPHYR = None
 # qemu binary should be installed in shell PATH
 QEMU_BIN = "qemu-system-arm"
 
-SERIAL_BAUDRATE = 115200
+SERIAL_BAUDRATE = 9600
 
 
 def get_qemu_cmd(kernel_image):
@@ -91,7 +91,7 @@ class ZephyrCtl:
         self.btp_socket.open()
 
         if self.tty_file:
-            socat_cmd = ("socat -x -v %s,rawer,b115200 UNIX-CONNECT:%s" %
+            socat_cmd = ("socat -x -v %s,rawer,b9600 UNIX-CONNECT:%s" %
                          (self.tty_file, BTP_ADDRESS))
 
             log("Starting socat process: %s", socat_cmd)
