@@ -297,10 +297,9 @@ def hdl_wid_57(desc):
     if not channel:
         return False
 
-    # Reserve 2 octets for L2CAP SDU Length field in each frame.
     for i in range(4):
-        btp.l2cap_send_data(0, '00' * (channel.peer_mps - 2))
-
+        btp.l2cap_send_data(0, '00')
+        time.sleep(2)
     return True
 
 
