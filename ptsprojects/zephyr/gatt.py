@@ -660,7 +660,8 @@ def test_cases_client(pts):
                   cmds=pre_conditions,
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAR/BI-04-C",
-                  cmds=pre_conditions,
+                  cmds=pre_conditions +
+                   [TestFunc(btp.gap_set_io_cap, IOCap.no_input_output)],
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAR/BI-05-C",
                   cmds=pre_conditions,
@@ -707,7 +708,8 @@ def test_cases_client(pts):
                   cmds=pre_conditions,
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAR/BI-16-C",
-                  cmds=pre_conditions,
+                  cmds=pre_conditions +
+                   [TestFunc(btp.gap_set_io_cap, IOCap.no_input_output)],
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAR/BI-17-C",
                   cmds=pre_conditions,
@@ -725,7 +727,8 @@ def test_cases_client(pts):
                   cmds=pre_conditions,
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAR/BI-21-C",
-                  cmds=pre_conditions,
+                  cmds=pre_conditions +
+                   [TestFunc(btp.gap_set_io_cap, IOCap.no_input_output)],
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAR/BI-22-C",
                   cmds=pre_conditions,
@@ -767,7 +770,8 @@ def test_cases_client(pts):
                   pre_conditions,
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAW/BI-05-C",
-                  pre_conditions,
+                  cmds=pre_conditions +
+                   [TestFunc(btp.gap_set_io_cap, IOCap.no_input_output)],
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAW/BI-06-C",
                   pre_conditions,
@@ -788,7 +792,8 @@ def test_cases_client(pts):
                   pre_conditions,
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAW/BI-12-C",
-                  pre_conditions,
+                  cmds=pre_conditions +
+                   [TestFunc(btp.gap_set_io_cap, IOCap.no_input_output)],
                   generic_wid_hdl=gatt_wid_hdl),
         ZTestCase("GATT", "GATT/CL/GAW/BI-13-C",
                   pre_conditions,
