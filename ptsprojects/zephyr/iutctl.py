@@ -81,7 +81,7 @@ class ZephyrCtl:
             self.btp_address = BTP_ADDRESS
 
         if use_rtt2pty:
-            self.rtt2pty = RTT2PTY()
+            self.rtt2pty = RTT2PTY(board_id)
             self.btmon = BTMON()
         else:
             self.rtt2pty = None
