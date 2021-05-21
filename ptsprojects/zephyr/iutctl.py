@@ -73,7 +73,7 @@ class ZephyrCtl:
         self.iut_log_file = None
 
         if use_rtt2pty:
-            self.rtt2pty = RTT2PTY()
+            self.rtt2pty = RTT2PTY(board_id)
         else:
             self.rtt2pty = None
 

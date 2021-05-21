@@ -134,6 +134,7 @@ This may contain few sections:
     - `enable_max_logs` - enable debug logs
     - `retry` - maximum repeat count per test
     - `bd_addr` - IUT Bluetooth Address (optional)
+    - `rtt2pty` - enable RTT logs
 - `mail` - Mail configuration (optional)
     - `sender` - sender e-mail address
     - `smtp_host`, `smtp_port` - sender SMTP configuration
