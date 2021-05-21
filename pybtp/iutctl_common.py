@@ -245,16 +245,17 @@ class BTPWorker(BTPSocket):
 
 
 class RTT2PTY:
-    def __init__(self):
+    def __init__(self, board_id):
         self.rtt2pty_process = None
         self.pty_name = None
         self.serial_thread = None
         self.stop_thread = threading.Event()
         self.log_filename = None
         self.log_file = None
+        self.board_id = board_id
 
     def _start_rtt2pty_proc(self):
-        self.rtt2pty_process = subprocess.Popen('rtt2pty',
+        self.rtt2pty_process = subprocess.Popen(["rtt2pty", "-s", self.board_id],
                                                 shell=False,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.PIPE)
