@@ -59,7 +59,7 @@ class ZephyrCtl:
             self.__class__, self.__init__.__name__, kernel_image, tty_file,
             board_name, board_id)
 
-        self.debugger_snr = None
+        self.debugger_snr = board_id
         self.kernel_image = kernel_image
         self.tty_file = tty_file
 
