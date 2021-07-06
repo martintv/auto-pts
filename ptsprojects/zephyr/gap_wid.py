@@ -364,6 +364,12 @@ def hdl_wid_72(desc):
     return True
 
 
+def hdl_wid_73(desc):
+    btp.gattc_read_uuid(btp.pts_addr_type_get(None), btp.pts_addr_get(None),
+                        '0001', 'FFFF', UUID.device_name)
+    return True
+
+
 def hdl_wid_74(desc):
     hdl_wid_72(desc)
     return True
