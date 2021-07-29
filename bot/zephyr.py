@@ -121,13 +121,6 @@ def build_and_flash(zephyr_wd, board, board_id, conf_def, conf_file=None):
             lines.append('};')
         with open(nrf5340_overlay_conf, 'w') as file:
             file.writelines(lines)
-
-        cmd_build = ['west', 'build', '-p', 'always', '-b', board]
-        check_call(cmd_build, env=env, cwd=tester_dir)
-        cmd_flash = ['west', 'flash', '--recover', '--erase', '--snr', board_id]
-        check_call(cmd_flash, env=env, cwd=tester_dir)
-
-        repo.index.checkout(paths=nrf5340_overlay_conf, force=True)
     # --END
 
     cmd_build = ['west', 'build', '-p', 'always', '-b', board]
