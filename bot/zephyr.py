@@ -107,7 +107,7 @@ def build_and_flash(zephyr_wd, board, board_id, conf_def, conf_file=None):
     env = source_zephyr_env(zephyr_wd)
 
     # If nrf53 power-cycled, use the hack to fix hw_flow_control --BEGIN
-    if board == 'nrf5340dk_nrf5340_cpuapp' and conf_file == 'prj.conf':
+    if board == 'nrf5340dk_nrf5340_cpuapp':
         repo = Repo(zephyr_wd)
         nrf5340_overlay_conf = os.path.join(zephyr_wd, 'tests', 'bluetooth',
                                             'tester', 'nrf5340dk_nrf5340_cpuapp.overlay')
