@@ -24,6 +24,7 @@ import datetime
 import collections
 import serial
 from argparse import Namespace
+from git import Repo
 
 import autoptsclient_common as autoptsclient
 import ptsprojects.zephyr as autoprojects
@@ -61,11 +62,11 @@ def _validate_pair(ob):
     return True
 
 
-def build_and_flash(zephyr_wd, board, tty, conf_file=None):
+def build_and_flash(zephyr_wd, board, jlink_srn, conf_file=None):
     """Build and flash Zephyr binary
     :param zephyr_wd: Zephyr source path
     :param board: IUT
-    :param tty path
+    :param jlink_srn
     :param conf_file: configuration file to be used
     """
     logging.debug("{}: {} {} {}". format(build_and_flash.__name__, zephyr_wd,
@@ -74,7 +75,31 @@ def build_and_flash(zephyr_wd, board, tty, conf_file=None):
 
     check_call('rm -rf build/'.split(), cwd=tester_dir)
 
-    cmd = ['west',  'build', '-p', 'auto', '-b', board]
+    # If nrf53 power-cycled, use the hack to fix hw_flow_control --BEGIN
+    if board == 'nrf53' and conf_file == 'prj.conf':
+        repo = Repo(zephyr_wd)
+        nrf5340_overlay_conf = os.path.join(zephyr_wd, 'tests', 'bluetooth',
+                                            'tester', 'nrf5340dk_nrf5340_cpuapp.overlay')
+        if repo.is_dirty(path=nrf5340_overlay_conf):
+            repo.index.checkout(paths=nrf5340_overlay_conf, force=True)
+
+        lines = []
+        with open(nrf5340_overlay_conf, 'r') as file:
+            lines = file.readlines()
+            lines = lines[:-2]
+            lines.append('};')
+        with open(nrf5340_overlay_conf, 'w') as file:
+            file.writelines(lines)
+
+        cmd = ['west', 'build', '-p', 'always', '-b', board]
+        check_call(cmd, cwd=tester_dir)
+        check_call(['west', 'flash', '--recover', '--erase', '--skip-rebuild',
+                    '--snr', jlink_srn], cwd=tester_dir)
+
+        repo.index.checkout(paths=nrf5340_overlay_conf, force=True)
+    # --END
+
+    cmd = ['west',  'build', '-p', 'always', '-b', board]
     if conf_file and conf_file != 'default' and conf_file != 'prj.conf':
         cmd.extend(('--', '-DOVERLAY_CONFIG={}'.format(conf_file)))
 
@@ -83,8 +108,8 @@ def build_and_flash(zephyr_wd, board, tty, conf_file=None):
         cmd = ['bash.exe', '-c', '-i', cmd]  # bash.exe == wsl
 
     check_call(cmd, cwd=tester_dir)
-    check_call(['west', 'flash', '--skip-rebuild',
-                '--board-dir', tty], cwd=tester_dir)
+    check_call(['west', 'flash', '--recover', '--erase', '--skip-rebuild',
+                '--snr', jlink_srn], cwd=tester_dir)
 
 
 def flush_serial(tty):
@@ -129,6 +154,7 @@ def apply_overlay(zephyr_wd, base_conf, cfg_name, overlay):
 autopts2board = {
     None: None,
     'nrf52': 'nrf52840dk_nrf52840',
+    'nrf53': 'nrf5340dk_nrf5340_cpuapp',
     'reel_board' : 'reel_board'
 }
 
@@ -182,7 +208,7 @@ class PtsInitArgs(object):
         self.superguard = 60 * float(args.get('superguard', 0))
 
 
-def run_tests(args, iut_config, tty):
+def run_tests(args, iut_config, tty, jlink_srn):
     """Run test cases
     :param args: AutoPTS arguments
     :param iut_config: IUT configuration
@@ -247,7 +273,7 @@ def run_tests(args, iut_config, tty):
 
         build_and_flash(args["project_path"],
                         autopts2board[args["board"]],
-                        tty,
+                        jlink_srn,
                         config)
         logging.debug("TTY path: %s" % tty)
 
@@ -355,11 +381,11 @@ def main(cfg):
         autoptsclient.board_power(args['ykush'], True)
         time.sleep(1)
 
-    tty, jlink_srn = bot.common.get_free_device()
+    tty, jlink_srn = bot.common.get_free_device(args['board'])
 
     try:
         summary, results, descriptions, regressions = \
-            run_tests(args, cfg.get('iut_config', {}), tty)
+            run_tests(args, cfg.get('iut_config', {}), tty, jlink_srn)
     except Exception as e:
         bot.common.release_device(jlink_srn)
         raise e
