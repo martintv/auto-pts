@@ -282,7 +282,7 @@ def run_tests(args, iut_config, tty, jlink_srn):
 
         autoprojects.iutctl.init(Namespace(kernel_image=args["kernel_image"],
                                            tty_file=tty, board=args["board"],
-                                           hci=None, rtt2pty=None))
+                                           hci=None, rtt2pty=args["rtt2pty"]))
 
         # Setup project PIXITS
         autoptsclient.setup_project_name('zephyr')
