@@ -60,14 +60,13 @@ class ZephyrCtl:
             self.__class__, self.__init__.__name__, args.kernel_image,
             args.tty_file, args.board)
 
-        self.debugger_snr = None
+        self.debugger_snr = args.jlink_srn
         self.kernel_image = args.kernel_image
         self.tty_file = args.tty_file
         self.hci = args.hci
         self.native = None
 
         if self.tty_file and args.board:  # DUT is a hardware board, not QEMU
-            self.get_debugger_snr()
             self.board = Board(args.board, args.kernel_image, self)
         else:  # DUT is QEMU or a board that won't be reset
             self.board = None
@@ -91,23 +90,6 @@ class ZephyrCtl:
         else:
             self.rtt2pty = None
             self.btmon = None
-
-    def get_debugger_snr(self):
-        debuggers = subprocess.Popen('nrfjprog --com',
-                                     shell=True,
-                                     stdout=subprocess.PIPE
-                                     ).stdout.read().decode()
-
-        if sys.platform == "win32":
-            COM = "COM" + str(int(self.tty_file["/dev/ttyS".__len__():]) + 1)
-            reg = "[0-9]+(?=\s+" + COM + ".+)"
-        else:
-            reg = "[0-9]+(?=\s+" + self.tty_file + ".+)"
-
-        try:
-            self.debugger_snr = re.findall(reg, debuggers)[0]
-        except:
-            sys.exit("No debuggers associated with the device found")
 
     def start(self, test_case):
         """Starts the Zephyr OS"""
