@@ -18,11 +18,18 @@ import logging
 import re
 import struct
 import sys
+from threading import Timer
 from time import sleep
 
 from ptsprojects.stack import get_stack
 from pybtp import btp, types
 from pybtp.types import Prop, Perm, UUID, AdType, bdaddr_reverse
+
+def stop_adv_timer_callbck():
+    logging.debug("matv stopping advertising")
+    btp.gap_adv_off()
+
+adv_stop_timer = Timer(30.0, stop_adv_timer_callbck)
 
 log = logging.debug
 
@@ -227,7 +234,6 @@ def hdl_wid_49(desc):
 
     return True
 
-
 def hdl_wid_50(desc):
     stack = get_stack()
 
@@ -236,7 +242,9 @@ def hdl_wid_50(desc):
     btp.gap_set_conn()
 
     btp.gap_adv_ind_on(ad=stack.gap.ad)
-
+    logging.debug("matv settin up stopping off advertiser")
+    adv_stop_timer = Timer(30.0, stop_adv_timer_callbck)
+    adv_stop_timer.start()
     return True
 
 
@@ -317,7 +325,9 @@ def hdl_wid_59(desc):
     btp.gap_set_limdiscov()
 
     btp.gap_adv_ind_on(ad=stack.gap.ad)
-
+    logging.debug("matv settin up stopping off advertiser")
+    adv_stop_timer = Timer(30.0, stop_adv_timer_callbck)
+    adv_stop_timer.start()
     return True
 
 
