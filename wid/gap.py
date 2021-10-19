@@ -929,6 +929,18 @@ def hdl_wid_232(desc):
 
     return True
 
+def hdl_wid_406(desc):
+    #GAP/CONN/DCON/BV-05-C uses this,
+    #pts.exe output: Please enter General Connectable Mode using private addresses.
+    stack = get_stack()
+    stack.gap.ad[AdType.advertising_interval_long] = "000030"
+    btp.gap_adv_ind_on(ad=stack.gap.ad)
+    return True
+
+def hdl_wid_403(desc):
+    #GAP/CONN/DCON/BV-05-C uses this,
+    #pts.exe output: Please perform the Directed Connection Establishment Procedure using RPA then resolve the PTS address and connect with PTS.
+    return True
 
 def hdl_wid_1002(desc):
     stack = get_stack()
